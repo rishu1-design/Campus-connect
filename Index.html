@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Campus Connect – Mobile SPA</title>
+  <style>
+    /* Reset & base */
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Segoe UI", Roboto, Arial, sans-serif; }
+    html,body { height:100%; }
+    body { background: #f2f4f8; padding: 12px; display:flex; justify-content:center; align-items:flex-start; }
+
+    /* App shell */
+    .app {
+      width: 100%;
+      max-width: 460px;
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+      overflow: hidden;
+      min-height: 640px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header.app-header {
+      background: linear-gradient(90deg,#20b39a 0%,#17a88a 100%);
+      padding: 14px;
+      color: #fff;
+      text-align: center;
+    }
+    header.app-header h1 { font-size:18px; margin-bottom:4px; }
+    header.app-header p { font-size:13px; opacity:0.95; margin-top:2px; }
+
+    /* Container for views */
+    .viewport {
+      position: relative;
+      height: calc(100% - 72px);
+      overflow: hidden;
+      background: #fff;
+    }
+
+    /* Generic view */
+    .view {
+      position: absolute;
+      inset: 0;
+      padding: 14px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      background: #fff;
+      display: none;
+      transform: translateX(0);
+    }
+
+    .view.active { display: block; }
+
+    /* slide animation helpers */
+    .anim-slide-in { animation: slideIn .28s ease forwards; }
+    .anim-slide-out { animation: slideOut .28s ease forwards; }
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0.96; }
+      to   { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideOut {
+      from { transform: translateX(0); opacity: 1; }
+      to   { transform: translateX(-30%); opacity: 0; }
+    }
+
+    /* LOGIN / SIGNUP */
+    .container { position: relative; background: transparent; }
+    .form-box { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 6px 20px rgba(0,0,0,0.04); margin-bottom: 10px; }
+    .form-box h1 { color: #18ab91; margin-bottom: 8px; font-size: 18px; }
+    input, select { width: 100%; padding: 12px; margin:8px 0; border-radius: 8px; border: 1px solid #e6e6e6; background: #fafafa; }
+    button.btn { width: 100%; padding: 12px; border-radius: 10px; border: none; background: #18ab91; color: #fff; font-weight:700; cursor:pointer; margin-top:8px; }
+    button.ghost { background: transparent; border: 1px solid rgba(255,255,255,0.25); color: #fff; padding: 8px 16px; border-radius: 999px; }
+
+    /* Dashboard */
+    main.dashboard { padding: 8px 0 40px 0; }
+    .chat-buttons { display:flex; flex-direction:column; gap:12px; margin-top:12px; }
+    .chat-btn { display:block; padding:12px; border-radius:10px; text-decoration:none; color:#18ab91; border:1.6px solid #18ab91; text-align:center; font-weight:700; background:#fff; }
+    .chat-btn:hover { background:#18ab91; color:#fff; }
+
+    .logout-btn { margin-top:18px; padding:10px; border-radius:10px; border:none; background:#f43f5e; color:#fff; font-weight:700; cursor:pointer; }
+
+    /* FACULTY pending table */
+    table { width:100%; border-collapse: collapse; margin-top:12px; }
+    th,td { padding:8px; border-bottom:1px solid #eee; font-size:13px; text-align:left; }
+    .approveBtn { padding:8px 10px; border-radius:8px; border:1px solid #18ab91; background:#fff; color:#18ab91; cursor:pointer; font-weight:700; }
+
+    /* CHAT (global) */
+    #chat-box { height: 58vh; overflow-y:auto; background:#fff; padding:8px; border-radius:10px; border:1px solid #f0f0f0; }
+    .msg { margin:8px 0; padding:8px 12px; border-radius:16px; max-width:72%; }
+    .self { background:#dcf8c6; margin-left:auto; }
+    .other { background:#ececec; margin-right:auto; }
+
+    .input-row { display:flex; gap:8px; margin-top:10px; }
+    .input-row input { flex:1; padding:10px; border-radius:10px; border:1px solid #e6e6e6; }
+    .input-row button { padding:10px 14px; border-radius:10px; border:none; background:#18ab91; color:#fff; cursor:pointer; }
+
+    /* PRIVATE CHAT */
+    header.private-header { display:flex; align-items:center; gap:10px; background:#128c7e; color:#fff; padding:10px 12px; }
+    header.private-header button.icon { background:none; border:none; color:#fff; font-size:20px; cursor:pointer; }
+    #friendName { font-weight:700; font-size:16px; flex:1; }
+
+    #chatList { background:#fff; border-radius:8px; padding:6px; border:1px solid #f0f0f0; max-height: 44vh; overflow:auto; }
+    .chat-item { padding:12px; border-bottom:1px solid #f3f3f3; cursor:pointer; display:flex; justify-content:space-between; align-items:center; }
+    .chat-item:hover { background:#fafafa; }
+    .chat-info { flex:1; }
+
+    #messages { display:none; flex-direction:column; gap:6px; max-height:50vh; overflow:auto; padding:6px; }
+    .bubble { padding:10px 14px; border-radius:18px; max-width:70%; box-shadow:0 1px 1px rgba(0,0,0,0.06); }
+    .mine { background:#dcf8c6; margin-left:auto; }
+    .theirs{ background:#fff; margin-right:auto; }
+    .input-box { display:none; padding:8px; background:#f6f6f6; border-top:1px solid #eee; display:flex; gap:8px; align-items:center; }
+    .input-box input { flex:1; padding:10px; border-radius:20px; border:1px solid #e6e6e6; }
+
+    /* small screens tweaks */
+    @media (max-width:420px) {
+      .app { border-radius: 0; min-height: 100vh; box-shadow:none; }
+      body { padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" role="application">
+    <header class="app-header">
+      <h1>Campus Connect</h1>
+      <p id="appSubtitle">Unite Your Campus</p>
+    </header>
+
+    <div class="viewport">
+      <!-- LOGIN / SIGNUP VIEW -->
+      <section id="loginView" class="view active">
+        <div style="padding:8px;">
+          <div class="form-box">
+            <h1>Create Account</h1>
+            <span style="opacity:.85">Use your email for registration</span>
+            <input id="signupName" type="text" placeholder="Name" />
+            <input id="signupEmail" type="email" placeholder="Email" />
+            <input id="signupPassword" type="password" placeholder="Password" />
+            <select id="signupRole">
+              <option value="" disabled selected>Select your role</option>
+              <option value="student">Student</option>
+              <option value="faculty">Faculty</option>
+            </select>
+            <button id="signupBtn" class="btn">Sign Up</button>
+          </div>
+
+          <div class="form-box" style="margin-top:10px;">
+            <h1>Sign In</h1>
+            <input id="loginEmail" type="email" placeholder="Email" />
+            <input id="loginPassword" type="password" placeholder="Password" />
+            <button id="loginBtn" class="btn">Login</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- FACULTY DASHBOARD -->
+      <section id="facultyView" class="view" aria-hidden="true">
+        <div style="padding:8px;">
+          <h2 style="color:#0f1724; margin-bottom:6px;">Faculty / Admin Dashboard</h2>
+          <p>Welcome, <span id="facultyNameDisplay"></span></p>
+
+          <h3 style="margin-top:12px;">Pending Signups</h3>
+          <table id="pendingTable">
+            <thead><tr><th>Email</th><th>Role</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody></tbody>
+          </table>
+
+          <section style="margin-top:12px;">
+            <h3>Chat Options</h3>
+            <div class="chat-buttons">
+              <a class="chat-btn" id="openGlobalChatFromFaculty">🌐 Global Chat</a>
+              <a class="chat-btn" id="openPrivateChatFromFaculty">💬 Private Chat</a>
+              <a class="chat-btn" id="openGroupsFromFaculty">👥 Groups</a>
+            </div>
+          </section>
+
+          <button id="logoutBtnFaculty" class="logout-btn">Logout</button>
+        </div>
+      </section>
+
+      <!-- STUDENT DASHBOARD -->
+      <section id="studentView" class="view" aria-hidden="true">
+        <div style="padding:8px;">
+          <h2 style="color:#0f1724; margin-bottom:6px;">Student Dashboard</h2>
+          <p>Welcome, <span id="studentNameDisplay"></span></p>
+
+          <section style="margin-top:12px;">
+            <h3>Chats</h3>
+            <div class="chat-buttons">
+              <a class="chat-btn" id="openGlobalChatFromStudent">🌐 Global Chat</a>
+              <a class="chat-btn" id="openPrivateChatFromStudent">💬 Private Chat</a>
+              <a class="chat-btn" id="openGroupsFromStudent">👥 Groups</a>
+            </div>
+          </section>
+
+          <button id="logoutBtnStudent" class="logout-btn">Logout</button>
+        </div>
+      </section>
+
+      <!-- GLOBAL CHAT VIEW -->
+      <section id="globalChatView" class="view" aria-hidden="true">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <button id="backFromGlobal" class="ghost" style="background:#fff; border:1px solid #ddd; padding:8px 10px; border-radius:8px;">← Back</button>
+          <h3 style="margin:0;">🌐 Global Chat</h3>
+        </div>
+
+        <div id="chat-box"></div>
+
+        <div class="input-row">
+          <input id="msgInput" type="text" placeholder="Type a message..." />
+          <button id="sendBtn">Send</button>
+        </div>
+      </section>
+
+      <!-- PRIVATE CHAT VIEW -->
+      <section id="privateView" class="view" aria-hidden="true">
+        <!-- private header with back -->
+        <header class="private-header" style="border-radius:8px 8px 0 0;">
+          <button id="backFromPrivate" class="icon">←</button>
+          <div id="friendName">Chats</div>
+          <button id="backToList" class="icon" style="display:none;">←</button>
+        </header>
+
+        <input id="searchBar" type="text" placeholder="Search or start new chat..." style="margin:10px 12px; padding:10px; border-radius:20px; border:1px solid #eee; width: calc(100% - 24px);">
+
+        <div id="chatList"></div>
+
+        <div id="messages"></div>
+
+        <div class="input-box">
+          <input id="privateMsgInput" type="text" placeholder="Type a message..." />
+          <button id="privateSendBtn">➤</button>
+        </div>
+      </section>
+
+    </div> <!-- viewport -->
+  </div> <!-- app -->
+
+  <!-- Firebase + App logic -->
+  <script type="module">
+    // ---------- Firebase imports ----------
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import {
+      getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import {
+      getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, where, onSnapshot, serverTimestamp,
+      addDoc, orderBy, getDocs, arrayUnion
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+    // ---------- Config ----------
+    const firebaseConfig = {
+      apiKey: "AIzaSyAFKmM22FUSQPYy-eMsBzcZN3bmAxglXl0",
+      authDomain: "smart-timetable-266fe.firebaseapp.com",
+      projectId: "smart-timetable-266fe"
+    };
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // ---------- Simple view manager with slide animation ----------
+    let currentRole = null; // 'student' or 'faculty'
+    let currentDashboardView = 'loginView';
+
+    function showView(id, opts = { animate: true }) {
+      // hide all views
+      document.querySelectorAll('.view').forEach(v => {
+        if (v.id === id) return;
+        if (v.classList.contains('active')) {
+          // animate out
+          if (opts.animate) v.classList.add('anim-slide-out');
+          setTimeout(()=> {
+            v.classList.remove('active', 'anim-slide-out', 'anim-slide-in');
+            v.setAttribute('aria-hidden','true');
+          }, opts.animate ? 280 : 0);
+        } else {
+          v.classList.remove('anim-slide-out','anim-slide-in');
+          v.classList.remove('active');
+          v.setAttribute('aria-hidden','true');
+        }
+      });
+
+      // show new
+      const newV = document.getElementById(id);
+      if (!newV) return;
+      newV.classList.add('active');
+      newV.setAttribute('aria-hidden','false');
+      if (opts.animate) {
+        newV.classList.remove('anim-slide-out');
+        newV.classList.add('anim-slide-in');
+        setTimeout(()=> newV.classList.remove('anim-slide-in'), 300);
+      }
+      // track dashboard id
+      if (id === 'studentView' || id === 'facultyView' || id === 'loginView') currentDashboardView = id;
+    }
+
+    // ---------- DOM Elements ----------
+    const signupName = document.getElementById('signupName');
+    const signupEmail = document.getElementById('signupEmail');
+    const signupPassword = document.getElementById('signupPassword');
+    const signupRole = document.getElementById('signupRole');
+    const signupBtn = document.getElementById('signupBtn');
+
+    const loginEmail = document.getElementById('loginEmail');
+    const loginPassword = document.getElementById('loginPassword');
+    const loginBtn = document.getElementById('loginBtn');
+
+    const logoutBtnStudent = document.getElementById('logoutBtnStudent');
+    const logoutBtnFaculty = document.getElementById('logoutBtnFaculty');
+
+    const facultyNameDisplay = document.getElementById('facultyNameDisplay');
+    const studentNameDisplay = document.getElementById('studentNameDisplay');
+
+    // ---------- Signup / Login ----------
+    signupBtn.addEventListener('click', async () => {
+      const name = signupName.value.trim();
+      const email = signupEmail.value.trim();
+      const pass = signupPassword.value;
+      const role = signupRole.value;
+      if (!name || !email || !pass || !role) return alert('Fill all fields');
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, email, pass);
+        await setDoc(doc(db,'users',cred.user.uid), { name, email, role, approved:false, uid:cred.user.uid, createdAt: serverTimestamp() });
+        alert('Account created! Awaiting approval by admin.');
+        await signOut(auth);
+        // clear fields
+        signupName.value=''; signupEmail.value=''; signupPassword.value=''; signupRole.value='';
+      } catch (e) {
+        alert(e.message);
+      }
+    });
+
+    loginBtn.addEventListener('click', async () => {
+      try {
+        await signInWithEmailAndPassword(auth, loginEmail.value, loginPassword.value);
+      } catch (e) {
+        alert(e.message);
+      }
+    });
+
+    logoutBtnStudent.addEventListener('click', ()=> signOut(auth));
+    logoutBtnFaculty.addEventListener('click', ()=> signOut(auth));
+
+    // ---------- onAuthStateChanged ----------
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        localStorage.removeItem('chatUser');
+        showView('loginView');
+        document.getElementById('appSubtitle').textContent = 'Unite Your Campus';
+        return;
+      }
+      const d = await getDoc(doc(db,'users',user.uid));
+      if (!d.exists()) {
+        alert('User record not found. Please contact admin.');
+        await signOut(auth);
+        return;
+      }
+      const p = d.data();
+      if (!p.approved) {
+        alert('Your account is awaiting approval.');
+        await signOut(auth);
+        return;
+      }
+      currentRole = p.role;
+      localStorage.setItem('chatUser', JSON.stringify({ uid: p.uid, name: p.name, email: p.email }));
+      document.getElementById('appSubtitle').textContent = `${p.role === 'faculty' ? 'Faculty Dashboard' : 'Student Dashboard'}`;
+
+      if (p.role === 'faculty') {
+        facultyNameDisplay.textContent = p.name;
+        showView('facultyView');
+        loadPendingSignups();
+      } else {
+        studentNameDisplay.textContent = p.name;
+        showView('studentView');
+      }
+    });
+
+    // ---------- Pending signups (faculty) ----------
+    let _pendingUnsub = null;
+    function loadPendingSignups() {
+      const tableBody = document.querySelector("#pendingTable tbody");
+      if (!tableBody) return;
+      if (_pendingUnsub) { _pendingUnsub(); _pendingUnsub = null; }
+      const qPending = query(collection(db, "users"), where("approved", "==", false));
+      _pendingUnsub = onSnapshot(qPending, snapshot => {
+        tableBody.innerHTML = "";
+        snapshot.forEach(docSnap => {
+          const user = docSnap.data();
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${user.email || ""}</td>
+            <td>${user.role || ""}</td>
+            <td>${user.approved ? "Approved" : "Pending"}</td>
+            <td><button class="approveBtn" data-id="${user.uid}">Approve</button></td>
+          `;
+          tableBody.appendChild(tr);
+        });
+        tableBody.querySelectorAll(".approveBtn").forEach(btn => {
+          btn.addEventListener("click", async e => {
+            const uid = e.target.getAttribute("data-id");
+            if (!uid) return;
+            try {
+              await updateDoc(doc(db, "users", uid), { approved: true });
+              alert("User approved.");
+            } catch (err) {
+              console.error(err);
+              alert("Error approving user: " + err.message);
+            }
+          });
+        });
+      }, err => console.error("Error listening to pending users:", err));
+    }
+
+    // ---------- Navigation from dashboard to chats ----------
+    document.getElementById('openGlobalChatFromFaculty').addEventListener('click', ()=> openGlobalChat());
+    document.getElementById('openPrivateChatFromFaculty').addEventListener('click', ()=> openPrivate());
+    document.getElementById('openGroupsFromFaculty').addEventListener('click', ()=> alert('Groups not implemented yet'));
+
+    document.getElementById('openGlobalChatFromStudent').addEventListener('click', ()=> openGlobalChat());
+    document.getElementById('openPrivateChatFromStudent').addEventListener('click', ()=> openPrivate());
+    document.getElementById('openGroupsFromStudent').addEventListener('click', ()=> alert('Groups not implemented yet'));
+
+    // ---------- GLOBAL CHAT ----------
+    const user = () => JSON.parse(localStorage.getItem('chatUser') || '{}');
+    const chatBox = document.getElementById('chat-box');
+    const msgInput = document.getElementById('msgInput');
+    const sendBtn = document.getElementById('sendBtn');
+    let _globalUnsub = null;
+
+    function openGlobalChat() {
+      const u = user();
+      if (!u.uid) { alert('Please login first'); showView('loginView'); return; }
+      showView('globalChatView');
+      initGlobalChat();
+    }
+
+    document.getElementById('backFromGlobal').addEventListener('click', ()=>{
+      // go back to correct dashboard
+      if (currentRole === 'faculty') showView('facultyView'); else showView('studentView');
+      // unsubscribe real-time listener
+      if (_globalUnsub) { _globalUnsub(); _globalUnsub = null; }
+    });
+
+    sendBtn.addEventListener('click', async ()=>{
+      const u = user();
+      const text = msgInput.value.trim();
+      if (!text) return;
+      try {
+        await addDoc(collection(db,"globalChat"), { text, senderName: u.name, senderUid: u.uid, timestamp: serverTimestamp() });
+        msgInput.value = '';
+      } catch (e) { alert('Send error: ' + e.message); }
+    });
+
+    function initGlobalChat() {
+      if (_globalUnsub) return; // already listening
+      const qMsgs = query(collection(db, "globalChat"), orderBy("timestamp", "asc"));
+      _globalUnsub = onSnapshot(qMsgs, snap => {
+        chatBox.innerHTML = "";
+        snap.forEach(d => {
+          const data = d.data();
+          const div = document.createElement('div');
+          div.classList.add('msg', data.senderUid === user().uid ? 'self' : 'other');
+          const time = data.timestamp?.toDate ? (data.timestamp.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})) : '';
+          div.innerHTML = `<strong style="display:block;margin-bottom:6px;font-size:13px;">${data.senderName}</strong><div style="font-size:14px;">${escapeHtml(data.text)}</div><div style="font-size:11px;opacity:.6;margin-top:6px;text-align:right;">${time}</div>`;
+          chatBox.appendChild(div);
+        });
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }, err => console.error(err));
+    }
+
+    // ---------- PRIVATE CHAT ----------
+    // Elements
+    const chatListDiv = document.getElementById('chatList');
+    const messagesDiv = document.getElementById('messages');
+    const inputBox = document.querySelector('.input-box');
+    const privateMsgInput = document.getElementById('privateMsgInput');
+    const privateSendBtn = document.getElementById('privateSendBtn');
+    const friendNameDiv = document.getElementById('friendName');
+    const backFromPrivate = document.getElementById('backFromPrivate');
+    const backToList = document.getElementById('backToList');
+    const searchBar = document.getElementById('searchBar');
+
+    let currentChatId = null;
+    let currentFriend = null;
+    let unsubMsg = null;
+
+    // open private chat view
+    function openPrivate() {
+      const u = user();
+      if (!u.uid) { alert('Please login first'); showView('loginView'); return; }
+      showView('privateView');
+      friendNameDiv.textContent = 'Chats';
+      backToList.style.display = 'none';
+      chatListDiv.style.display = 'block';
+      messagesDiv.style.display = 'none';
+      inputBox.style.display = 'none';
+      searchBar.style.display = 'block';
+      loadChats();
+    }
+
+    backFromPrivate.addEventListener('click', ()=>{
+      // go back to dashboard
+      if (currentRole === 'faculty') showView('facultyView'); else showView('studentView');
+      // cleanup
+      if (unsubMsg) { unsubMsg(); unsubMsg = null; }
+    });
+
+    backToList.addEventListener('click', ()=>{
+      if (unsubMsg) { unsubMsg(); unsubMsg = null; }
+      currentChatId = null; currentFriend = null;
+      friendNameDiv.textContent = 'Chats';
+      backToList.style.display = 'none';
+      chatListDiv.style.display = 'block';
+      messagesDiv.style.display = 'none';
+      inputBox.style.display = 'none';
+      searchBar.style.display = 'block';
+    });
+
+    // search users live
+    searchBar.addEventListener('input', async () => {
+      const qText = searchBar.value.trim().toLowerCase();
+      chatListDiv.innerHTML = '';
+      if (!qText) { loadChats(); return; }
+      const usersRef = collection(db, "users");
+      const usersSnap = await getDocs(usersRef);
+      usersSnap.forEach(docSnap => {
+        const u = docSnap.data();
+        if (u.uid !== user().uid && (u.name || '').toLowerCase().includes(qText)) {
+          const div = document.createElement('div');
+          div.className = 'chat-item';
+          div.innerHTML = `<div class='chat-info'><div class='chat-name'>${u.name}</div><div class='chat-last'>Start chat</div></div>`;
+          div.addEventListener('click', () => startNewChat(u));
+          chatListDiv.appendChild(div);
+        }
+      });
+    });
+
+    // Load chats
+    function loadChats() {
+      const q = query(collection(db, "privateChats"), where("members", "array-contains", user().uid));
+      onSnapshot(q, async snap => {
+        chatListDiv.innerHTML = '';
+        const chats = [];
+        snap.forEach(d => chats.push({ id: d.id, data: d.data() }));
+        // sort by lastUpdated
+        chats.sort((a,b) => {
+          const aTime = a.data.lastUpdated?.toMillis?.() || 0;
+          const bTime = b.data.lastUpdated?.toMillis?.() || 0;
+          return bTime - aTime;
+        });
+        for (const chat of chats) {
+          const friendUid = chat.data.members.find(uid => uid !== user().uid);
+          let friendData = { name: 'Unknown' };
+          try {
+            const friendDoc = await getDoc(doc(db, "users", friendUid));
+            friendData = friendDoc.exists() ? friendDoc.data() : friendData;
+          } catch (e) {}
+          // unread count (simple)
+          let unreadCount = 0;
+          try {
+            const msgSnap = await getDocs(collection(db, "privateChats", chat.id, "messages"));
+            msgSnap.forEach(m => {
+              const d = m.data();
+              if (!d.seenBy?.includes(user().uid) && d.senderUid !== user().uid) unreadCount++;
+            });
+          } catch (e) {}
+          const div = document.createElement('div');
+          div.className = 'chat-item';
+          div.innerHTML = `
+            <div class="chat-info">
+              <div style="font-weight:700;">${escapeHtml(friendData.name)}</div>
+              <div style="font-size:13px;opacity:.7;">${escapeHtml(chat.data.lastMsg || "No messages yet")}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              ${unreadCount > 0 ? `<div style="background:#25d366;color:#fff;border-radius:10px;padding:4px 8px;font-weight:700;font-size:12px;">${unreadCount}</div>` : ''}
+            </div>
+          `;
+          div.addEventListener('click', () => {
+            startChat(chat.id, friendUid, friendData);
+          });
+          chatListDiv.appendChild(div);
+        }
+      }, err => console.error(err));
+    }
+
+    // start or create new chat
+    async function startNewChat(friend) {
+      // check existing chats between the two (simple approach)
+      const chatRef = collection(db, "privateChats");
+      // Firestore doesn't allow direct 'in' for arrays of arrays easily; fallback: create new chat always if not found by scan
+      const chatsSnap = await getDocs(chatRef);
+      let chatId = null;
+      chatsSnap.forEach(d => {
+        const members = d.data().members || [];
+        if (members.includes(user().uid) && members.includes(friend.uid)) {
+          chatId = d.id;
+        }
+      });
+      if (!chatId) {
+        const docRef = await addDoc(chatRef, { members: [user().uid, friend.uid], created: serverTimestamp() });
+        chatId = docRef.id;
+      }
+      startChat(chatId, friend.uid, friend);
+    }
+
+    function startChat(chatId, friendUid, friendData) {
+      currentChatId = chatId;
+      currentFriend = { uid: friendUid, ...friendData };
+      friendNameDiv.textContent = friendData.name;
+      backToList.style.display = 'inline';
+      chatListDiv.style.display = 'none';
+      messagesDiv.style.display = 'flex';
+      inputBox.style.display = 'flex';
+      searchBar.style.display = 'none';
+
+      // cleanup previous
+      if (unsubMsg) unsubMsg();
+
+      // subscribe to messages
+      const msgQ = query(collection(db, "privateChats", chatId, "messages"), orderBy("timestamp"));
+      unsubMsg = onSnapshot(msgQ, snap => {
+        messagesDiv.innerHTML = '';
+        snap.forEach(d => {
+          const m = d.data();
+          const bubble = document.createElement('div');
+          bubble.className = 'bubble ' + (m.senderUid === user().uid ? 'mine' : 'theirs');
+          const timeStr = m.timestamp?.toDate?.().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) || '';
+          let tickHtml = '';
+          if (m.senderUid === user().uid) {
+            const isSeen = currentFriend && m.seenBy?.includes(currentFriend.uid);
+            tickHtml = `<span style="margin-left:8px;color:${isSeen ? '#34b7f1' : '#888'};">✔✔</span>`;
+          }
+          bubble.innerHTML = `<div>${escapeHtml(m.text)}</div><div style="font-size:11px;opacity:.7;margin-top:6px;display:flex;justify-content:flex-end;align-items:center;gap:6px;"><span>${timeStr}</span>${tickHtml}</div>`;
+          messagesDiv.appendChild(bubble);
+
+          if (m.senderUid !== user().uid) markSeen(d.id);
+        });
+        messagesDiv.scrollTo({ top: messagesDiv.scrollHeight, behavior: 'smooth' });
+      });
+    }
+
+    async function sendMessagePrivate() {
+      const text = privateMsgInput.value.trim();
+      if (!text || !currentChatId) return;
+      try {
+        await addDoc(collection(db, "privateChats", currentChatId, "messages"), {
+          senderUid: user().uid,
+          text,
+          timestamp: serverTimestamp(),
+          seenBy: [user().uid]
+        });
+        await updateDoc(doc(db, "privateChats", currentChatId), {
+          lastMsg: text,
+          lastUpdated: serverTimestamp(),
+          lastTime: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
+        });
+        privateMsgInput.value = '';
+      } catch (e) {
+        console.error(e);
+        alert('Error sending: ' + e.message);
+      }
+    }
+
+    privateSendBtn.addEventListener('click', sendMessagePrivate);
+    privateMsgInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessagePrivate(); });
+
+    async function markSeen(docId) {
+      try {
+        await updateDoc(doc(db, "privateChats", currentChatId, "messages", docId), { seenBy: arrayUnion(user().uid) });
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    // ---------- Utilities ----------
+    function escapeHtml(s) {
+      if (!s && s !== 0) return '';
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // ---------- Init small behavior: if user already in localStorage, try to show dashboard ----------
+    (function initFromLocal() {
+      const stored = JSON.parse(localStorage.getItem('chatUser') || '{}');
+      if (stored.uid) {
+        // try to get user's role from Firestore
+        getDoc(doc(db, "users", stored.uid)).then(d => {
+          if (!d.exists()) { localStorage.removeItem('chatUser'); return; }
+          const p = d.data();
+          currentRole = p.role;
+          if (p.role === 'faculty') {
+            facultyNameDisplay.textContent = p.name;
+            showView('facultyView', { animate: false });
+            loadPendingSignups();
+          } else {
+            studentNameDisplay.textContent = p.name;
+            showView('studentView', { animate: false });
+          }
+        }).catch(()=>{ /* ignore */ });
+      }
+    })();
+
+    // quick helper to open private or global from anywhere
+    function openGlobalChatFromAnywhere() { openGlobalChat(); }
+    function openPrivateFromAnywhere() { openPrivate(); }
+
+    // Expose a couple useful functions to console (debug)
+    window.cc = {
+      showView, openGlobalChat, openPrivate
+    };
+
+  </script>
+</body>
+</html>
